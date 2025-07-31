@@ -1,0 +1,65 @@
+{
+  "simple_request": {
+    "model": "our_model_1",
+    "max_completion_tokens": 1024,
+    "messages": [
+      {
+        "role": "user",
+        "content": "Hello, how are you?"
+      }
+    ]
+  },
+  "system_message_request": {
+    "model": "our_model_1",
+    "max_completion_tokens": 1024,
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are a helpful assistant."
+      },
+      {
+        "role": "user",
+        "content": "What is the capital of France?"
+      }
+    ]
+  },
+  "multi_turn_request": {
+    "model": "custom_gpt_model",
+    "max_completion_tokens": 1024,
+    "messages": [
+      {
+        "role": "user",
+        "content": "Hello"
+      },
+      {
+        "role": "assistant",
+        "content": "Hi there! How can I help you today?"
+      },
+      {
+        "role": "user",
+        "content": "What's the weather like?"
+      }
+    ]
+  },
+  "simple_response": {
+    "id": "chatcmpl-123",
+    "object": "chat.completion",
+    "created": 1677652288,
+    "model": "custom_gpt_model",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "I'm doing well, thank you for asking! How can I help you today?"
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 10,
+      "completion_tokens": 15,
+      "total_tokens": 25
+    }
+  }
+}

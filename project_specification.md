@@ -1,0 +1,8 @@
+- I work on an internet-disconnected network that hosts a LLM for inference for users. The LLM is hosted in a way that it is only compatible with OpenAI style API calls. I want to make it compatible with Anthropic style API calls so that I can do development using the Anthropic Python SDK.
+- Specifically, I want to develop some Python library that will take an Anthropic Messages Python request object, convert it to an OpenAI ChatCompletions Python request object, submit the request to the service, receive the response to the reqest (a OpenAI ChatCompletion response Python object), and then convert it to an Anthropic Messages Python response object returned to the user.
+- As a first step, just get it to work making traditional LLM conversations turns.
+- As a second step, it needs to support tool calling as well.
+- Ideally, it would bridge any differences.
+- I previously attempted this and rebuilt the requests myself, but for whatever reason it didn't work on my work network. I think because of a particular way that the service is implemented. Because of this, I think this project should import both the Anthropic and OpenAI Python libraries, and basically convert Messages Request -> JSON -> ChatCompletions Request, and then convert ChatCompletions Response -> JSON -> Messages Response.
+- I have provided official documentation for Anthropic Messages in anthropic_messages.md and unofficial documentation for OpenAI ChatCompletion in openai_chatcompletions.md.
+- I have also provided an Anthropic API key and an OpenAI API key in .env.
