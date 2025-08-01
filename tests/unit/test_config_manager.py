@@ -86,3 +86,72 @@ class TestConfigManager:
             assert config.openai_base_url is None
         finally:
             os.unlink(temp_env_file)
+    
+    def test_custom_openai_api_key_parameter(self):
+        """Test that custom OpenAI API key parameter overrides environment"""
+        os.environ["OPENAI_API_KEY"] = "env_key"
+        
+        config = ConfigManager(openai_api_key="custom_key")
+        
+        assert config.openai_api_key == "custom_key"
+    
+    def test_custom_openai_base_url_parameter(self):
+        """Test that custom OpenAI base URL parameter overrides environment"""
+        os.environ["OPENAI_BASE_URL"] = "https://env.endpoint.com"
+        os.environ["OPENAI_API_KEY"] = "test_key"
+        
+        config = ConfigManager(openai_base_url="https://custom.endpoint.com")
+        
+        assert config.openai_base_url == "https://custom.endpoint.com"
+    
+    def test_custom_httpx_client_parameter(self):
+        """Test that custom httpx client is stored correctly"""
+        mock_httpx_client = "mock_httpx_client"
+        
+        config = ConfigManager(httpx_client=mock_httpx_client)
+        
+        assert config.httpx_client == mock_httpx_client
+    
+    def test_custom_parameters_with_env_file(self):
+        """Test that custom parameters work with env file"""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.env', delete=False) as f:
+            f.write("OPENAI_API_KEY=env_key\n")
+            f.write("OPENAI_BASE_URL=https://env.endpoint.com\n")
+            temp_env_file = f.name
+        
+        try:
+            config = ConfigManager(
+                env_file=temp_env_file,
+                openai_api_key="custom_key",
+                openai_base_url="https://custom.endpoint.com"
+            )
+            
+            # Custom parameters should override env file values
+            assert config.openai_api_key == "custom_key"
+            assert config.openai_base_url == "https://custom.endpoint.com"
+        finally:
+            os.unlink(temp_env_file)
+    
+    def test_custom_openai_api_key_without_env_var(self):
+        """Test that custom OpenAI API key works without environment variable"""
+        config = ConfigManager(openai_api_key="custom_key")
+        
+        assert config.openai_api_key == "custom_key"
+    
+    def test_missing_openai_api_key_with_custom_params_raises_error(self):
+        """Test that missing OpenAI API key still raises error with custom params"""
+        # Create empty env file to avoid loading the project's .env
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.env', delete=False) as f:
+            f.write("# Empty env file for testing\n")
+            temp_env_file = f.name
+        
+        try:
+            config = ConfigManager(
+                env_file=temp_env_file,
+                openai_base_url="https://custom.endpoint.com"
+            )
+            
+            with pytest.raises(ValueError, match="OPENAI_API_KEY environment variable is required or must be provided as parameter"):
+                _ = config.openai_api_key
+        finally:
+            os.unlink(temp_env_file)

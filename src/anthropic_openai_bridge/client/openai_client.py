@@ -23,6 +23,10 @@ class OpenAIClientWrapper:
         if self.config.openai_base_url:
             client_kwargs["base_url"] = self.config.openai_base_url
         
+        # Add custom httpx client if specified
+        if self.config.httpx_client:
+            client_kwargs["http_client"] = self.config.httpx_client
+        
         self.client = openai.OpenAI(**client_kwargs)
     
     def create_chat_completion(self, request: Dict[str, Any]) -> Dict[str, Any]:

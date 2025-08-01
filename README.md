@@ -158,11 +158,62 @@ print(response["content"][0]["text"])
 
 ### Custom Configuration
 
+The bridge supports multiple ways to configure custom OpenAI clients for secure network environments:
+
+#### Method 1: Direct Parameters (Recommended)
+
+```python
+from anthropic_openai_bridge import AnthropicOpenAIBridge
+import httpx
+
+# For network security requirements
+custom_httpx_client = httpx.Client(
+    proxies="http://your-proxy:8080",
+    verify="/path/to/custom/ca-cert.pem",
+    timeout=30.0
+)
+
+bridge = AnthropicOpenAIBridge(
+    openai_api_key="your_custom_api_key",
+    openai_base_url="https://yourbaseurl.com/api",
+    httpx_client=custom_httpx_client
+)
+
+response = bridge.send_message(request)
+```
+
+#### Method 2: Using ConfigManager
+
+```python
+from anthropic_openai_bridge import AnthropicOpenAIBridge
+from anthropic_openai_bridge.config.config_manager import ConfigManager
+import httpx
+
+# Create custom httpx client
+custom_httpx_client = httpx.Client(
+    proxies="http://your-proxy:8080",
+    verify="/path/to/custom/ca-cert.pem"
+)
+
+# Use custom configuration
+config = ConfigManager(
+    env_file="path/to/custom/.env",
+    openai_api_key="your_custom_api_key",
+    openai_base_url="https://yourbaseurl.com/api",
+    httpx_client=custom_httpx_client
+)
+
+bridge = AnthropicOpenAIBridge(config_manager=config)
+response = bridge.send_message(request)
+```
+
+#### Method 3: Environment File Only
+
 ```python
 from anthropic_openai_bridge import AnthropicOpenAIBridge
 from anthropic_openai_bridge.config.config_manager import ConfigManager
 
-# Use custom configuration
+# Use custom .env file
 config = ConfigManager(env_file="path/to/custom/.env")
 bridge = AnthropicOpenAIBridge(config_manager=config)
 
@@ -175,11 +226,14 @@ response = bridge.send_message(request)
 
 The main bridge class that orchestrates the conversion process.
 
-#### `__init__(config_manager=None)`
+#### `__init__(config_manager=None, openai_api_key=None, openai_base_url=None, httpx_client=None)`
 
 Initialize the bridge.
 
 - `config_manager` (optional): Custom `ConfigManager` instance. If `None`, uses default configuration.
+- `openai_api_key` (optional): Custom OpenAI API key (overrides environment variable)
+- `openai_base_url` (optional): Custom OpenAI base URL (overrides environment variable) 
+- `httpx_client` (optional): Custom httpx client for network security requirements
 
 #### `send_message(anthropic_request)`
 
@@ -323,9 +377,19 @@ The bridge consists of several key components:
 This bridge is ideal for:
 
 - **Air-gapped/Internet-disconnected networks** with OpenAI-compatible LLM services
+- **Corporate/Enterprise networks** with strict security requirements, proxy servers, and custom CA certificates
 - **Migration scenarios** where you want to use Anthropic's API format with existing OpenAI infrastructure
 - **Development environments** where you want to test Anthropic-format requests against local models
 - **Multi-provider setups** where you need consistent API interfaces
+
+### Network Security Features
+
+The bridge fully supports enterprise network security requirements:
+
+- **Custom HTTP clients**: Pass your own `httpx.Client` with custom SSL certificates, proxy settings, and timeouts
+- **Proxy support**: Configure HTTP/HTTPS proxies through the httpx client
+- **Custom CA certificates**: Specify custom certificate authority certificates for secure communication
+- **Flexible authentication**: Support for custom API keys and endpoints
 
 ## Limitations
 

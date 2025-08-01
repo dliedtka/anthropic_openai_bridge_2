@@ -10,13 +10,31 @@ from .converters.response_converter import ResponseConverter
 class AnthropicOpenAIBridge:
     """Main bridge class that converts Anthropic requests to OpenAI and back"""
     
-    def __init__(self, config_manager: Optional[ConfigManager] = None):
+    def __init__(
+        self, 
+        config_manager: Optional[ConfigManager] = None,
+        openai_api_key: Optional[str] = None,
+        openai_base_url: Optional[str] = None,
+        httpx_client: Optional[Any] = None
+    ):
         """Initialize the bridge with configuration and converters
         
         Args:
             config_manager: Optional configuration manager. If None, uses default.
+            openai_api_key: Custom OpenAI API key (overrides environment variable)
+            openai_base_url: Custom OpenAI base URL (overrides environment variable)
+            httpx_client: Custom httpx client for OpenAI requests
         """
-        self.config = config_manager or ConfigManager()
+        # If custom parameters are provided but no config_manager, create one with the custom params
+        if (openai_api_key or openai_base_url or httpx_client) and config_manager is None:
+            self.config = ConfigManager(
+                openai_api_key=openai_api_key,
+                openai_base_url=openai_base_url,
+                httpx_client=httpx_client
+            )
+        else:
+            self.config = config_manager or ConfigManager()
+        
         self.openai_client = OpenAIClientWrapper(self.config)
         self.request_converter = RequestConverter()
         self.response_converter = ResponseConverter()

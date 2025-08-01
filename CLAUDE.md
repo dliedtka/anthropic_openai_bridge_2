@@ -4,55 +4,72 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is an Anthropic-OpenAI bridge library that enables conversion between Anthropic Messages API requests and OpenAI ChatCompletions API requests. The bridge allows users to use the Anthropic Python SDK while communicating with an OpenAI-compatible LLM service on an internet-disconnected network.
+This is an Anthropic-OpenAI bridge library that enables conversion between Anthropic Messages API requests and OpenAI ChatCompletions API requests. The bridge allows users to use the Anthropic Python SDK format while communicating with an OpenAI-compatible LLM service on an internet-disconnected network.
 
 ## Architecture
 
-The bridge operates by:
-1. Taking Anthropic Messages Python request objects
-2. Converting them to OpenAI ChatCompletions Python request objects via JSON transformation
-3. Submitting requests to the OpenAI-compatible service
-4. Converting OpenAI ChatCompletion response objects back to Anthropic Messages response objects
-5. Returning the converted response to the user
+The bridge is implemented with a clean separation of concerns:
 
-Key design decision: Uses both Anthropic and OpenAI Python libraries for robust conversion (Messages Request → JSON → ChatCompletions Request, then ChatCompletions Response → JSON → Messages Response).
+- **`AnthropicOpenAIBridge`** (`src/anthropic_openai_bridge/bridge.py`): Main orchestrator class that coordinates the conversion process
+- **`RequestConverter`** (`src/anthropic_openai_bridge/converters/request_converter.py`): Converts Anthropic Messages API requests to OpenAI ChatCompletions format
+- **`ResponseConverter`** (`src/anthropic_openai_bridge/converters/response_converter.py`): Converts OpenAI responses back to Anthropic Messages format
+- **`OpenAIClientWrapper`** (`src/anthropic_openai_bridge/client/openai_client.py`): Handles OpenAI API communication
+- **`ConfigManager`** (`src/anthropic_openai_bridge/config/config_manager.py`): Manages configuration and API keys from `.env` files
 
-## API Mappings
+### Flow
+1. Takes Anthropic Messages API request dictionaries  
+2. `RequestConverter` transforms to OpenAI ChatCompletions format
+3. `OpenAIClientWrapper` submits to OpenAI-compatible service
+4. `ResponseConverter` transforms OpenAI response back to Anthropic format
+5. Returns Anthropic Messages API response dictionary
 
-### Core Features to Support
-- Traditional LLM conversation turns (Phase 1)
-- Tool calling functionality (Phase 2)
-- Bridging API differences between the two formats
+## Key Implementation Details
 
-### Key API Differences
-- **Message Structure**: Anthropic uses `messages` array with `role` and `content`, OpenAI has similar structure but different parameter names and nesting
-- **Model Parameters**: OpenAI uses `max_completion_tokens` (replacing deprecated `max_tokens`), Anthropic has different parameter names
-- **Tool Calling**: Both support function calling but with different schemas and parameter structures
-- **Authentication**: Anthropic uses `x-api-key` header, OpenAI uses `Authorization: Bearer` header
-- **Response Format**: Different object structures and field names between the APIs
+### Model Name Passthrough
+Model names are passed through unchanged - no mapping or conversion occurs. This allows use of custom model names, OpenAI model names, or any identifier the target service expects.
+
+### Parameter Mapping
+- `max_tokens` → `max_completion_tokens` (OpenAI's preferred parameter)
+- `system` parameter → system message in `messages` array
+- `temperature` passes through unchanged
+- Messages array structure remains compatible
+
+### API Format Differences Handled
+- **Authentication**: Manages different header formats (`x-api-key` vs `Authorization: Bearer`)
+- **System Messages**: Anthropic's top-level `system` parameter converts to OpenAI's system message in messages array
+- **Parameter Names**: Handles `max_tokens` vs `max_completion_tokens` difference
+- **Response Structure**: Converts between different response object schemas
 
 ## Environment Configuration
 
-API keys are stored in `.env`:
-- `ANTHROPIC_API_KEY`: For Anthropic API access
-- `OPENAI_API_KEY`: For OpenAI API access
+### Option 1: Environment File
+Create `.env` file with:
+- `OPENAI_API_KEY`: For OpenAI-compatible API access (required)
+- `ANTHROPIC_API_KEY`: For reference/testing (optional)
+- `OPENAI_BASE_URL`: Custom endpoint URL (optional, defaults to OpenAI)
 
-## Documentation References
+### Option 2: Programmatic Configuration (Recommended for Security)
+For network security requirements, use direct parameter configuration:
 
-- `anthropic_messages.md`: Official Anthropic Messages API documentation
-- `openai_chatcompletions.md`: OpenAI ChatCompletions API documentation  
-- `project_specification.md`: Detailed project requirements and implementation approach
+```python
+import httpx
+from anthropic_openai_bridge import AnthropicOpenAIBridge
 
-## Development Status
+# Custom httpx client for security requirements
+custom_httpx_client = httpx.Client(
+    proxies="http://your-proxy:8080",
+    verify="/path/to/custom/ca-cert.pem",
+    timeout=30.0
+)
 
-This is a greenfield project - no implementation exists yet. The codebase currently contains only documentation and specifications.
+bridge = AnthropicOpenAIBridge(
+    openai_api_key="your_custom_api_key",
+    openai_base_url="https://yourbaseurl.com/api",
+    httpx_client=custom_httpx_client
+)
+```
 
-## Implementation Approach
-
-- Target environment is an internet-disconnected network
-- Previous attempt using manual request building failed on the work network
-- Current approach uses official Python SDKs for better compatibility
-- Focus on supporting both basic conversations and tool calling scenarios
+This approach bypasses `.env` files and allows full control over HTTP client configuration.
 
 ## Development Commands
 
@@ -94,13 +111,35 @@ mypy src/
 python example_usage.py
 ```
 
-## Phase Implementation Plan
+## Current Implementation Status
 
-**Phase 1**: Basic conversation support
-- Convert Anthropic Messages request → OpenAI ChatCompletions request
-- Submit to OpenAI-compatible service
-- Convert OpenAI ChatCompletions response → Anthropic Messages response
+**Phase 1 - Complete**: Basic conversation support implemented and tested
+- ✅ Anthropic Messages request → OpenAI ChatCompletions request conversion
+- ✅ OpenAI-compatible service communication 
+- ✅ OpenAI ChatCompletions response → Anthropic Messages response conversion
+- ✅ System message handling
+- ✅ Multi-turn conversations
+- ✅ Model name passthrough
+- ✅ Parameter mapping and validation
+- ✅ Comprehensive test suite
 
-**Phase 2**: Tool calling support
-- Map Anthropic tool calling format to OpenAI function calling format
-- Handle tool execution responses in both directions
+**Phase 2 - Planned**: Tool calling support
+- 🔄 Map Anthropic tool calling format to OpenAI function calling format
+- 🔄 Handle tool execution responses in both directions
+
+## Testing Strategy
+
+The project uses pytest with comprehensive test coverage:
+- **Unit tests**: Test individual converters and components in isolation
+- **Integration tests**: Test full bridge functionality end-to-end
+- **Custom configuration tests**: Validate custom API keys, base URLs, and httpx client configuration
+- **Fixture-based testing**: JSON fixtures in `tests/fixtures/` provide consistent test data
+- **Parameter validation**: Tests ensure proper handling of edge cases and missing parameters
+- **Network security testing**: Tests verify httpx client integration and custom configuration handling
+
+### Running Tests with Custom Configuration
+Tests support custom httpx clients and validate all configuration methods work correctly. The test suite includes scenarios for:
+- Direct parameter configuration
+- ConfigManager-based configuration 
+- Environment file configuration
+- Mixed configuration approaches

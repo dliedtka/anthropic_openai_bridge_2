@@ -4,6 +4,7 @@ import tempfile
 import os
 from pathlib import Path
 from unittest.mock import Mock, patch
+import httpx
 
 from anthropic_openai_bridge import AnthropicOpenAIBridge
 from anthropic_openai_bridge.config.config_manager import ConfigManager
@@ -122,3 +123,85 @@ class TestBridgeIntegration:
                     "max_tokens": 1024,
                     "messages": [{"role": "user", "content": "test"}]
                 })
+
+    def test_bridge_with_custom_openai_api_key(self, anthropic_samples, openai_samples):
+        """Test bridge with custom OpenAI API key"""
+        bridge = AnthropicOpenAIBridge(openai_api_key="custom_test_key")
+        
+        assert bridge.config.openai_api_key == "custom_test_key"
+        
+        # Test that it works end-to-end
+        mock_response = openai_samples["simple_response"]
+        
+        with patch.object(bridge.openai_client, 'create_chat_completion', return_value=mock_response):
+            anthropic_request = anthropic_samples["simple_request"]
+            result = bridge.send_message(anthropic_request)
+            
+            assert result["role"] == "assistant"
+            assert "content" in result
+
+    def test_bridge_with_custom_base_url(self, anthropic_samples, openai_samples):
+        """Test bridge with custom OpenAI base URL"""
+        bridge = AnthropicOpenAIBridge(
+            openai_api_key="custom_test_key",
+            openai_base_url="https://custom.endpoint.com"
+        )
+        
+        assert bridge.config.openai_api_key == "custom_test_key"
+        assert bridge.config.openai_base_url == "https://custom.endpoint.com"
+        
+        # Test that it works end-to-end
+        mock_response = openai_samples["simple_response"]
+        
+        with patch.object(bridge.openai_client, 'create_chat_completion', return_value=mock_response):
+            anthropic_request = anthropic_samples["simple_request"]
+            result = bridge.send_message(anthropic_request)
+            
+            assert result["role"] == "assistant"
+            assert "content" in result
+
+    def test_bridge_with_custom_httpx_client(self, anthropic_samples, openai_samples):
+        """Test bridge with custom httpx client"""
+        custom_httpx_client = httpx.Client(timeout=30.0)
+        
+        bridge = AnthropicOpenAIBridge(
+            openai_api_key="custom_test_key",
+            httpx_client=custom_httpx_client
+        )
+        
+        assert bridge.config.openai_api_key == "custom_test_key"
+        assert bridge.config.httpx_client == custom_httpx_client
+        
+        # Test that it works end-to-end
+        mock_response = openai_samples["simple_response"]
+        
+        with patch.object(bridge.openai_client, 'create_chat_completion', return_value=mock_response):
+            anthropic_request = anthropic_samples["simple_request"]
+            result = bridge.send_message(anthropic_request)
+            
+            assert result["role"] == "assistant"
+            assert "content" in result
+
+    def test_bridge_with_all_custom_parameters(self, anthropic_samples, openai_samples):
+        """Test bridge with all custom parameters"""
+        custom_httpx_client = httpx.Client(timeout=30.0)
+        
+        bridge = AnthropicOpenAIBridge(
+            openai_api_key="custom_test_key",
+            openai_base_url="https://custom.endpoint.com",
+            httpx_client=custom_httpx_client
+        )
+        
+        assert bridge.config.openai_api_key == "custom_test_key"
+        assert bridge.config.openai_base_url == "https://custom.endpoint.com"
+        assert bridge.config.httpx_client == custom_httpx_client
+        
+        # Test that it works end-to-end
+        mock_response = openai_samples["simple_response"]
+        
+        with patch.object(bridge.openai_client, 'create_chat_completion', return_value=mock_response):
+            anthropic_request = anthropic_samples["simple_request"]
+            result = bridge.send_message(anthropic_request)
+            
+            assert result["role"] == "assistant"
+            assert "content" in result

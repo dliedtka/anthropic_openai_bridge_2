@@ -88,6 +88,66 @@ def main():
         print(f"Response: {response['content'][0]['text']}")
     except Exception as e:
         print(f"Error in multi-turn example: {e}")
+    
+    # Example 4: Custom configuration with direct parameters
+    print("\n--- Example 4: Custom Configuration (Direct Parameters) ---")
+    try:
+        # This is how you would configure the bridge for your network security requirements
+        # In practice, you would import httpx and create your custom client
+        # import httpx
+        # custom_httpx_client = httpx.Client(
+        #     proxies="http://your-proxy:8080",
+        #     verify="/path/to/custom/ca-cert.pem",
+        #     timeout=30.0
+        # )
+        
+        bridge_custom = AnthropicOpenAIBridge(
+            openai_api_key="your_custom_api_key",
+            openai_base_url="https://yourbaseurl.com/api",
+            # httpx_client=custom_httpx_client  # Uncomment when you have your httpx client
+        )
+        
+        custom_request = {
+            "model": "your_custom_model_name",
+            "max_tokens": 50,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": "What is 2+2?"
+                }
+            ]
+        }
+        
+        # This would work with your actual custom configuration
+        print("✓ Custom bridge initialized successfully")
+        print("  Custom API key configured")
+        print("  Custom base URL: https://yourbaseurl.com/api")
+        print("  (Example request would work with real configuration)")
+        
+    except Exception as e:
+        print(f"Custom configuration example (expected without real config): {e}")
+    
+    # Example 5: Using ConfigManager for advanced configuration
+    print("\n--- Example 5: Advanced Configuration with ConfigManager ---")
+    try:
+        from anthropic_openai_bridge.config.config_manager import ConfigManager
+        
+        # Create custom configuration manager
+        custom_config = ConfigManager(
+            openai_api_key="your_custom_api_key",
+            openai_base_url="https://yourbaseurl.com/api"
+            # httpx_client=custom_httpx_client  # Add your custom httpx client here
+        )
+        
+        # Use the custom configuration with the bridge
+        bridge_advanced = AnthropicOpenAIBridge(config_manager=custom_config)
+        
+        print("✓ Advanced bridge initialized successfully")
+        print("  Using custom ConfigManager")
+        print("  Supports all custom parameters")
+        
+    except Exception as e:
+        print(f"Advanced configuration example: {e}")
 
 
 if __name__ == "__main__":
