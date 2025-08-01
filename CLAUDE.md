@@ -89,8 +89,14 @@ python -m pytest tests/ -v
 python -m pytest tests/unit/test_request_converter.py -v
 python -m pytest tests/integration/ -v
 
+# Run single test file
+python -m pytest tests/unit/test_bridge.py -v
+
 # Quick test run
 python -m pytest tests/ -q
+
+# Run tests with coverage
+python -m pytest tests/ --cov=src/anthropic_openai_bridge --cov-report=html
 ```
 
 **Code Quality**:
@@ -103,6 +109,21 @@ isort src/ tests/
 
 # Type checking
 mypy src/
+
+# Run all code quality checks
+black src/ tests/ && isort src/ tests/ && mypy src/
+```
+
+**Build & Distribution**:
+```bash
+# Build package
+python -m build
+
+# Install locally in editable mode
+pip install -e .
+
+# Install with dev dependencies
+pip install -e ".[dev]"
 ```
 
 **Usage**:
