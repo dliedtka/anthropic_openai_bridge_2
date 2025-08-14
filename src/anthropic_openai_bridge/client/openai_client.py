@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, Union
 
 import openai
 
@@ -17,7 +17,7 @@ class OpenAIClientWrapper:
         self.config = config_manager
 
         # Initialize OpenAI client
-        client_kwargs = {"api_key": self.config.openai_api_key}
+        client_kwargs: Dict[str, Any] = {"api_key": self.config.openai_api_key}
 
         # Add custom base URL if specified
         if self.config.openai_base_url:
@@ -40,7 +40,7 @@ class OpenAIClientWrapper:
         """
         try:
             response = self.client.chat.completions.create(**request)
-            return response.model_dump()
+            return response.model_dump()  # type: ignore
         except Exception as e:
             # Convert OpenAI exceptions to consistent format
             return {

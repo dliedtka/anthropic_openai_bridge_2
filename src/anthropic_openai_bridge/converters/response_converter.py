@@ -3,9 +3,14 @@ from typing import Any, Dict, List, cast
 
 import anthropic.types
 
+from .tool_converter import ToolConverter
+
 
 class ResponseConverter:
     """Converts OpenAI ChatCompletions API responses to Anthropic Messages API responses"""
+
+    def __init__(self) -> None:
+        self.tool_converter = ToolConverter()
 
     STOP_REASON_MAPPING = {
         "stop": "end_turn",
@@ -26,8 +31,8 @@ class ResponseConverter:
         choice = openai_response["choices"][0]
         message = choice["message"]
 
-        # Build Anthropic Message object
-        content = [anthropic.types.TextBlock(type="text", text=message["content"])]
+        # Build content blocks
+        content = self._build_content_blocks(message)
 
         usage = anthropic.types.Usage(
             input_tokens=openai_response.get("usage", {}).get("prompt_tokens", 0),
@@ -49,6 +54,33 @@ class ResponseConverter:
         )
 
         return anthropic_response
+
+    def _build_content_blocks(
+        self, message: Dict[str, Any]
+    ) -> List[anthropic.types.ContentBlock]:
+        """Build content blocks from OpenAI message, handling both text and tool calls"""
+        content: List[anthropic.types.ContentBlock] = []
+
+        # Add text content if present
+        if message.get("content"):
+            content.append(
+                anthropic.types.TextBlock(type="text", text=message["content"])
+            )
+
+        # Add tool use blocks if present
+        if "tool_calls" in message and message["tool_calls"]:
+            tool_use_blocks = (
+                self.tool_converter.convert_openai_tool_calls_to_anthropic(
+                    message["tool_calls"]
+                )
+            )
+            content.extend(tool_use_blocks)
+
+        # If no content was created, add a default empty text block
+        if not content:
+            content.append(anthropic.types.TextBlock(type="text", text=""))
+
+        return content
 
     def _convert_stop_reason(self, openai_finish_reason: str) -> str:
         """Convert OpenAI finish_reason to Anthropic stop_reason"""

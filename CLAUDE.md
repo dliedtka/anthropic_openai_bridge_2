@@ -4,92 +4,32 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is an Anthropic-OpenAI bridge library that enables conversion between Anthropic Messages API requests and OpenAI ChatCompletions API requests. The bridge allows users to use the Anthropic Python SDK format while communicating with an OpenAI-compatible LLM service on an internet-disconnected network.
+This is an Anthropic-OpenAI bridge library that converts between Anthropic Messages API and OpenAI ChatCompletions API formats. The bridge allows using Anthropic's Python SDK format while communicating with OpenAI-compatible LLM services, particularly for internet-disconnected networks.
 
 ## Architecture
 
-The bridge is implemented with a clean separation of concerns:
+**Core Components**:
+- **`AnthropicOpenAIBridge`** (`src/anthropic_openai_bridge/bridge.py`): Main orchestrator
+- **`RequestConverter`** (`src/anthropic_openai_bridge/converters/request_converter.py`): Anthropic → OpenAI request conversion
+- **`ResponseConverter`** (`src/anthropic_openai_bridge/converters/response_converter.py`): OpenAI → Anthropic response conversion
+- **`ToolConverter`** (`src/anthropic_openai_bridge/converters/tool_converter.py`): Tool/function calling format conversion
+- **`OpenAIClientWrapper`** (`src/anthropic_openai_bridge/client/openai_client.py`): OpenAI API communication
+- **`ConfigManager`** (`src/anthropic_openai_bridge/config/config_manager.py`): Configuration and API key management
 
-- **`AnthropicOpenAIBridge`** (`src/anthropic_openai_bridge/bridge.py`): Main orchestrator class that coordinates the conversion process
-- **`RequestConverter`** (`src/anthropic_openai_bridge/converters/request_converter.py`): Converts Anthropic Messages API requests to OpenAI ChatCompletions format
-- **`ResponseConverter`** (`src/anthropic_openai_bridge/converters/response_converter.py`): Converts OpenAI responses back to Anthropic Messages format
-- **`OpenAIClientWrapper`** (`src/anthropic_openai_bridge/client/openai_client.py`): Handles OpenAI API communication
-- **`ConfigManager`** (`src/anthropic_openai_bridge/config/config_manager.py`): Manages configuration and API keys from `.env` files
+**Data Flow**: Anthropic request dict → RequestConverter → OpenAI API → ResponseConverter → `anthropic.types.Message` object
 
-### Flow
-1. Takes Anthropic Messages API request dictionaries  
-2. `RequestConverter` transforms to OpenAI ChatCompletions format
-3. `OpenAIClientWrapper` submits to OpenAI-compatible service
-4. `ResponseConverter` transforms OpenAI response back to Anthropic Message objects
-5. Returns `anthropic.types.Message` object (not dictionary)
+## Critical Implementation Details
 
-## Key Implementation Details
-
-### Model Name Passthrough
-Model names are passed through unchanged - no mapping or conversion occurs. This allows use of custom model names, OpenAI model names, or any identifier the target service expects.
-
-### Parameter Mapping
-- `max_tokens` → `max_completion_tokens` (OpenAI's preferred parameter)
-- `system` parameter → system message in `messages` array
-- `temperature` passes through unchanged
-- Messages array structure remains compatible
-
-### API Format Differences Handled
-- **Authentication**: Manages different header formats (`x-api-key` vs `Authorization: Bearer`)
-- **System Messages**: Anthropic's top-level `system` parameter converts to OpenAI's system message in messages array
-- **Parameter Names**: Handles `max_tokens` vs `max_completion_tokens` difference
-- **Response Structure**: Converts OpenAI response dictionaries to proper `anthropic.types.Message` objects
-- **Type Safety**: Returns structured Anthropic SDK objects with full type hints
-
-## Return Types and Object Structure
-
-**Important**: The bridge returns proper Anthropic SDK objects, not dictionaries.
-
+**Return Type**: The bridge returns `anthropic.types.Message` objects, NOT dictionaries:
 ```python
-response = bridge.send_message(request)
-print(type(response))  # <class 'anthropic.types.message.Message'>
-
-# Access properties using object notation (not dictionary keys):
-print(response.content[0].text)    # ✅ Correct
-print(response.usage.input_tokens) # ✅ Correct
-print(response["content"][0]["text"])  # ❌ Wrong - this is a dict approach
+response = bridge.send_message(request)  # Returns anthropic.types.Message object
+print(response.content[0].text)          # ✅ Object notation
+print(response["content"][0]["text"])    # ❌ Dictionary access fails
 ```
 
-**Object Structure**:
-- `response`: `anthropic.types.Message`
-- `response.content[0]`: `anthropic.types.TextBlock`
-- `response.usage`: `anthropic.types.Usage`
+**Model Name Passthrough**: Model names are passed unchanged - no mapping occurs. Use any model identifier your OpenAI-compatible service expects.
 
-## Environment Configuration
-
-### Option 1: Environment File
-Create `.env` file with:
-- `OPENAI_API_KEY`: For OpenAI-compatible API access (required)
-- `ANTHROPIC_API_KEY`: For reference/testing (optional)
-- `OPENAI_BASE_URL`: Custom endpoint URL (optional, defaults to OpenAI)
-
-### Option 2: Programmatic Configuration (Recommended for Security)
-For network security requirements, use direct parameter configuration:
-
-```python
-import httpx
-from anthropic_openai_bridge import AnthropicOpenAIBridge
-
-# Custom httpx client for security requirements
-custom_httpx_client = httpx.Client(
-    proxies="http://your-proxy:8080",
-    verify="/path/to/custom/ca-cert.pem",
-    timeout=30.0
-)
-
-bridge = AnthropicOpenAIBridge(
-    openai_api_key="your_custom_api_key",
-    openai_base_url="https://yourbaseurl.com/api",
-    httpx_client=custom_httpx_client
-)
-```
-
-This approach bypasses `.env` files and allows full control over HTTP client configuration.
+**Tool Calling**: Full bidirectional conversion between Anthropic and OpenAI tool calling formats, including multi-turn conversations and tool choice parameters.
 
 ## Development Commands
 
@@ -111,6 +51,13 @@ python -m pytest tests/integration/ -v
 
 # Run single test file
 python -m pytest tests/unit/test_bridge.py -v
+
+# Run tool calling specific tests
+python -m pytest tests/unit/test_tool_converter.py -v
+python -m pytest tests/integration/test_tool_calling_integration.py -v
+
+# Run all tool-related tests
+python -m pytest -k "tool" -v
 
 # Quick test run
 python -m pytest tests/ -q
@@ -150,38 +97,28 @@ pip install -e ".[dev]"
 ```bash
 # Run example script (requires .env with API keys)
 python example_usage.py
+
+# Run single test class
+python -m pytest tests/unit/test_bridge.py::TestAnthropicOpenAIBridge -v
 ```
 
-## Current Implementation Status
+## Implementation Status
 
-**Phase 1 - Complete**: Basic conversation support implemented and tested
-- ✅ Anthropic Messages request → OpenAI ChatCompletions request conversion
-- ✅ OpenAI-compatible service communication 
-- ✅ OpenAI ChatCompletions response → Anthropic Messages object conversion
+**Phase 1 & 2 Complete**: Full bridge functionality with tool calling support
+- ✅ Bidirectional API format conversion (Anthropic ↔ OpenAI)
+- ✅ Tool calling conversion (tools ↔ functions, tool_use ↔ function_call)
+- ✅ Multi-turn conversations with tool results
+- ✅ Custom httpx client support for network security
 - ✅ Returns proper `anthropic.types.Message` objects (not dictionaries)
-- ✅ System message handling
-- ✅ Multi-turn conversations
-- ✅ Model name passthrough
-- ✅ Parameter mapping and validation
-- ✅ Comprehensive test suite with type safety
-
-**Phase 2 - Planned**: Tool calling support
-- 🔄 Map Anthropic tool calling format to OpenAI function calling format
-- 🔄 Handle tool execution responses in both directions
 
 ## Testing Strategy
 
-The project uses pytest with comprehensive test coverage:
-- **Unit tests**: Test individual converters and components in isolation
-- **Integration tests**: Test full bridge functionality end-to-end
-- **Custom configuration tests**: Validate custom API keys, base URLs, and httpx client configuration
-- **Fixture-based testing**: JSON fixtures in `tests/fixtures/` provide consistent test data
-- **Parameter validation**: Tests ensure proper handling of edge cases and missing parameters
-- **Network security testing**: Tests verify httpx client integration and custom configuration handling
+**Test Structure**:
+- `tests/unit/`: Component isolation tests (converters, config, client)
+- `tests/integration/`: End-to-end bridge functionality tests
+- `tests/fixtures/`: JSON fixtures for consistent test data across tool calling and basic scenarios
 
-### Running Tests with Custom Configuration
-Tests support custom httpx clients and validate all configuration methods work correctly. The test suite includes scenarios for:
-- Direct parameter configuration
-- ConfigManager-based configuration 
-- Environment file configuration
-- Mixed configuration approaches
+**Key Test Files**:
+- `test_tool_converter.py`: Tool format conversion logic
+- `test_request_converter_tools.py` / `test_response_converter_tools.py`: Tool calling integration in converters
+- `test_tool_calling_integration.py`: Full tool calling workflows

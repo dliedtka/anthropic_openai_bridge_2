@@ -22,6 +22,7 @@ The bridge operates by:
 - ✅ **Usage Statistics**: Token usage conversion between formats
 - ✅ **Error Handling**: Proper error propagation and handling
 - ✅ **Environment Configuration**: Secure API key management via `.env` files
+- ✅ **Tool Calling Support**: Full conversion between Anthropic and OpenAI tool/function calling formats
 
 ## Installation
 
@@ -84,6 +85,191 @@ request = {
 
 response = bridge.send_message(request)
 print(response.content[0].text)
+```
+
+## Tool Calling Support
+
+The bridge now supports full tool calling conversion between Anthropic and OpenAI formats.
+
+### Basic Tool Calling Example
+
+```python
+from anthropic_openai_bridge import AnthropicOpenAIBridge
+
+bridge = AnthropicOpenAIBridge()
+
+# Define tools in Anthropic format
+request = {
+    "model": "your_model_name",
+    "max_tokens": 1024,
+    "tools": [
+        {
+            "name": "get_weather",
+            "description": "Get current weather information",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "location": {
+                        "type": "string",
+                        "description": "City and state, e.g. San Francisco, CA"
+                    },
+                    "unit": {
+                        "type": "string",
+                        "enum": ["celsius", "fahrenheit"],
+                        "description": "Temperature unit"
+                    }
+                },
+                "required": ["location"]
+            }
+        }
+    ],
+    "messages": [
+        {
+            "role": "user",
+            "content": "What's the weather in San Francisco?"
+        }
+    ]
+}
+
+# Get response with tool calls
+response = bridge.send_message(request)
+
+# Check if model wants to use tools
+if response.stop_reason == "tool_use":
+    # Find the tool use block
+    tool_use = next((block for block in response.content if hasattr(block, 'type') and block.type == "tool_use"), None)
+    
+    if tool_use:
+        print(f"Tool: {tool_use.name}")
+        print(f"Input: {tool_use.input}")
+        
+        # Execute tool (you implement this function)
+        tool_result = execute_weather_tool(tool_use.input["location"], tool_use.input.get("unit", "fahrenheit"))
+        
+        # Continue conversation with tool result
+        follow_up_request = {
+            "model": "your_model_name",
+            "max_tokens": 1024,
+            "tools": request["tools"],  # Keep same tools
+            "messages": [
+                # Include previous conversation
+                *request["messages"],
+                {
+                    "role": "assistant",
+                    "content": response.content  # Include the tool use
+                },
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": tool_use.id,
+                            "content": tool_result
+                        }
+                    ]
+                }
+            ]
+        }
+        
+        final_response = bridge.send_message(follow_up_request)
+        print(f"Final response: {final_response.content[0].text}")
+```
+
+### Multiple Tools Example
+
+```python
+request = {
+    "model": "your_model_name",
+    "max_tokens": 1024,
+    "tools": [
+        {
+            "name": "get_weather",
+            "description": "Get weather information",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "location": {"type": "string"}
+                },
+                "required": ["location"]
+            }
+        },
+        {
+            "name": "calculate",
+            "description": "Perform mathematical calculations",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "expression": {"type": "string"}
+                },
+                "required": ["expression"]
+            }
+        }
+    ],
+    "messages": [
+        {
+            "role": "user",
+            "content": "What's the weather in Boston and what's 15 * 8?"
+        }
+    ]
+}
+
+response = bridge.send_message(request)
+
+if response.stop_reason == "tool_use":
+    # Model might use multiple tools
+    tool_uses = [block for block in response.content if hasattr(block, 'type') and block.type == "tool_use"]
+    
+    tool_results = []
+    for tool_use in tool_uses:
+        if tool_use.name == "get_weather":
+            result = execute_weather_tool(tool_use.input["location"])
+        elif tool_use.name == "calculate":
+            result = execute_calculation(tool_use.input["expression"])
+        
+        tool_results.append({
+            "type": "tool_result",
+            "tool_use_id": tool_use.id,
+            "content": result
+        })
+    
+    # Continue conversation with all tool results
+    # ... (similar to previous example)
+```
+
+### Tool Choice Control
+
+```python
+# Force the model to use a specific tool
+request = {
+    "model": "your_model_name",
+    "max_tokens": 1024,
+    "tool_choice": {
+        "type": "tool",
+        "name": "get_weather"
+    },
+    "tools": [
+        {
+            "name": "get_weather",
+            "description": "Get weather information",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "location": {"type": "string"}
+                },
+                "required": ["location"]
+            }
+        }
+    ],
+    "messages": [
+        {
+            "role": "user",
+            "content": "Tell me about San Francisco"
+        }
+    ]
+}
+
+# Model will be forced to use the get_weather tool
+response = bridge.send_message(request)
 ```
 
 ## Usage Examples
@@ -390,9 +576,9 @@ The bridge fully supports enterprise network security requirements:
 
 ## Limitations
 
-- **Phase 1 Implementation**: Currently supports basic conversations. Tool calling support planned for Phase 2.
 - **Synchronous Only**: No async support yet (can be added in future versions)
 - **Text Only**: No image/file support yet (follows Anthropic Messages API capabilities)
+- **Tool Execution**: The bridge handles tool calling format conversion but does not execute tools - you must implement tool execution logic
 
 ## Contributing
 
