@@ -1,0 +1,262 @@
+{
+  "simple_tool_request": {
+    "model": "claude-3-sonnet",
+    "max_completion_tokens": 1024,
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "get_weather",
+          "description": "Get the current weather in a given location",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "location": {
+                "type": "string",
+                "description": "The city and state, e.g. San Francisco, CA"
+              },
+              "unit": {
+                "type": "string",
+                "enum": ["celsius", "fahrenheit"],
+                "description": "Temperature unit"
+              }
+            },
+            "required": ["location"]
+          }
+        }
+      }
+    ],
+    "messages": [
+      {
+        "role": "user",
+        "content": "What's the weather in San Francisco?"
+      }
+    ]
+  },
+  "multiple_tools_request": {
+    "model": "claude-3-sonnet",
+    "max_completion_tokens": 1024,
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "get_weather",
+          "description": "Get the current weather in a given location",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "location": {
+                "type": "string",
+                "description": "The city and state"
+              }
+            },
+            "required": ["location"]
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "calculate",
+          "description": "Perform basic mathematical calculations",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "expression": {
+                "type": "string",
+                "description": "Mathematical expression to evaluate"
+              }
+            },
+            "required": ["expression"]
+          }
+        }
+      }
+    ],
+    "messages": [
+      {
+        "role": "user",
+        "content": "What's the weather in Boston and what's 15 * 8?"
+      }
+    ]
+  },
+  "tool_choice_specific": {
+    "model": "claude-3-sonnet",
+    "max_completion_tokens": 1024,
+    "tool_choice": {
+      "type": "function",
+      "function": {"name": "get_weather"}
+    },
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "get_weather",
+          "description": "Get weather information",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "location": {"type": "string"}
+            },
+            "required": ["location"]
+          }
+        }
+      }
+    ],
+    "messages": [
+      {
+        "role": "user",
+        "content": "Tell me about San Francisco"
+      }
+    ]
+  },
+  "tool_use_response": {
+    "id": "chatcmpl-123",
+    "object": "chat.completion",
+    "created": 1677652288,
+    "model": "claude-3-sonnet",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "I'll check the weather for you.",
+          "tool_calls": [
+            {
+              "id": "call_01D7FLrfh4GYq7yT1ULFeyMV",
+              "type": "function",
+              "function": {
+                "name": "get_weather",
+                "arguments": "{\"location\":\"San Francisco, CA\",\"unit\":\"fahrenheit\"}"
+              }
+            }
+          ]
+        },
+        "finish_reason": "tool_calls"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 150,
+      "completion_tokens": 75,
+      "total_tokens": 225
+    }
+  },
+  "multiple_tool_use_response": {
+    "id": "chatcmpl-456",
+    "object": "chat.completion",
+    "created": 1677652300,
+    "model": "claude-3-sonnet",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "I'll get the weather and do the calculation for you.",
+          "tool_calls": [
+            {
+              "id": "call_01Weather123",
+              "type": "function",
+              "function": {
+                "name": "get_weather",
+                "arguments": "{\"location\":\"Boston, MA\"}"
+              }
+            },
+            {
+              "id": "call_01Calc456",
+              "type": "function",
+              "function": {
+                "name": "calculate",
+                "arguments": "{\"expression\":\"15 * 8\"}"
+              }
+            }
+          ]
+        },
+        "finish_reason": "tool_calls"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 200,
+      "completion_tokens": 120,
+      "total_tokens": 320
+    }
+  },
+  "tool_result_messages": [
+    {
+      "role": "tool",
+      "tool_call_id": "call_D7FLrfh4GYq7yT1ULFeyMV",
+      "name": "get_weather",
+      "content": "The weather in San Francisco, CA is 68°F with partly cloudy conditions."
+    }
+  ],
+  "multiple_tool_result_messages": [
+    {
+      "role": "tool",
+      "tool_call_id": "call_01Weather123",
+      "name": "get_weather", 
+      "content": "The weather in Boston, MA is 42°F with snow showers."
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_01Calc456",
+      "name": "calculate",
+      "content": "120"
+    }
+  ],
+  "multi_turn_tool_conversation": {
+    "model": "claude-3-sonnet",
+    "max_completion_tokens": 1024,
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "get_weather",
+          "description": "Get weather information",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "location": {"type": "string"}
+            },
+            "required": ["location"]
+          }
+        }
+      }
+    ],
+    "messages": [
+      {
+        "role": "user",
+        "content": "What's the weather in San Francisco?"
+      },
+      {
+        "role": "assistant",
+        "content": "I'll check the weather for you.",
+        "tool_calls": [
+          {
+            "id": "call_01D7FLrfh4GYq7yT1ULFeyMV",
+            "type": "function",
+            "function": {
+              "name": "get_weather",
+              "arguments": "{\"location\": \"San Francisco, CA\"}"
+            }
+          }
+        ]
+      },
+      {
+        "role": "tool",
+        "tool_call_id": "call_01D7FLrfh4GYq7yT1ULFeyMV",
+        "name": "unknown",
+        "content": "68°F, partly cloudy"
+      }
+    ]
+  },
+  "text_and_tool_result_messages": [
+    {
+      "role": "user",
+      "content": "Thanks for checking! Here's the result:"
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_D7FLrfh4GYq7yT1ULFeyMV",
+      "name": "get_weather",
+      "content": "68°F, partly cloudy"
+    }
+  ]
+}
