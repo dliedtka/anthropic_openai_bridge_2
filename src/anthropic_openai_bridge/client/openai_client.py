@@ -1,40 +1,40 @@
-from typing import Dict, Any
+from typing import Any, Dict
+
 import openai
+
 from ..config.config_manager import ConfigManager
 
 
 class OpenAIClientWrapper:
     """Wrapper for OpenAI client with configuration management"""
-    
+
     def __init__(self, config_manager: ConfigManager):
         """Initialize OpenAI client wrapper
-        
+
         Args:
             config_manager: Configuration manager instance
         """
         self.config = config_manager
-        
+
         # Initialize OpenAI client
-        client_kwargs = {
-            "api_key": self.config.openai_api_key
-        }
-        
+        client_kwargs = {"api_key": self.config.openai_api_key}
+
         # Add custom base URL if specified
         if self.config.openai_base_url:
             client_kwargs["base_url"] = self.config.openai_base_url
-        
+
         # Add custom httpx client if specified
         if self.config.httpx_client:
             client_kwargs["http_client"] = self.config.httpx_client
-        
+
         self.client = openai.OpenAI(**client_kwargs)
-    
+
     def create_chat_completion(self, request: Dict[str, Any]) -> Dict[str, Any]:
         """Create a chat completion using OpenAI API
-        
+
         Args:
             request: OpenAI-formatted request dictionary
-            
+
         Returns:
             OpenAI response dictionary
         """
@@ -47,6 +47,6 @@ class OpenAIClientWrapper:
                 "error": {
                     "message": str(e),
                     "type": "api_error",
-                    "code": getattr(e, 'code', 'unknown')
+                    "code": getattr(e, "code", "unknown"),
                 }
             }

@@ -14,6 +14,7 @@ The bridge operates by:
 ## Features
 
 - ✅ **Complete API Format Conversion**: Seamlessly converts between Anthropic and OpenAI API formats
+- ✅ **Native Anthropic Objects**: Returns proper `anthropic.types.Message` objects, not dictionaries
 - ✅ **Model Name Passthrough**: Use any model name - custom models, OpenAI models, or your own naming scheme
 - ✅ **System Message Support**: Anthropic `system` parameter converts to OpenAI system messages
 - ✅ **Multi-turn Conversations**: Full support for conversation history
@@ -82,7 +83,7 @@ request = {
 }
 
 response = bridge.send_message(request)
-print(response["content"][0]["text"])
+print(response.content[0].text)
 ```
 
 ## Usage Examples
@@ -106,8 +107,8 @@ request = {
 }
 
 response = bridge.send_message(request)
-print(f"Response: {response['content'][0]['text']}")
-print(f"Usage: {response['usage']['input_tokens']} input, {response['usage']['output_tokens']} output tokens")
+print(f"Response: {response.content[0].text}")
+print(f"Usage: {response.usage.input_tokens} input, {response.usage.output_tokens} output tokens")
 ```
 
 ### Conversation with System Message
@@ -126,8 +127,8 @@ request = {
 }
 
 response = bridge.send_message(request)
-print(f"Response: {response['content'][0]['text']}")
-print(f"Stop reason: {response['stop_reason']}")
+print(f"Response: {response.content[0].text}")
+print(f"Stop reason: {response.stop_reason}")
 ```
 
 ### Multi-turn Conversation
@@ -153,7 +154,7 @@ request = {
 }
 
 response = bridge.send_message(request)
-print(response["content"][0]["text"])
+print(response.content[0].text)
 ```
 
 ### Custom Configuration
@@ -240,7 +241,7 @@ Initialize the bridge.
 Send a message through the bridge.
 
 - `anthropic_request` (dict): Request in Anthropic Messages API format
-- Returns: Response in Anthropic Messages API format
+- Returns: `anthropic.types.Message` object (not a dictionary)
 
 ### Request Format
 
@@ -259,27 +260,22 @@ The bridge accepts standard Anthropic Messages API requests:
 
 ### Response Format
 
-Returns standard Anthropic Messages API responses:
+Returns Anthropic Messages API response objects (not dictionaries):
 
 ```python
-{
-    "id": "msg_ABC123",
-    "type": "message", 
-    "role": "assistant",
-    "content": [
-        {
-            "type": "text",
-            "text": "The assistant's response"
-        }
-    ],
-    "model": "your_model_name",
-    "stop_reason": "end_turn",
-    "stop_sequence": None,
-    "usage": {
-        "input_tokens": 10,
-        "output_tokens": 25
-    }
-}
+# Response is an anthropic.types.Message object
+response = bridge.send_message(request)
+
+# Access properties directly:
+print(response.id)              # "msg_ABC123"
+print(response.type)            # "message"
+print(response.role)            # "assistant"
+print(response.content[0].text) # "The assistant's response"
+print(response.model)           # "your_model_name"
+print(response.stop_reason)     # "end_turn"
+print(response.stop_sequence)   # None
+print(response.usage.input_tokens)  # 10
+print(response.usage.output_tokens) # 25
 ```
 
 ## Model Name Handling
@@ -311,7 +307,8 @@ The bridge propagates errors from the OpenAI API and converts them to exceptions
 
 ```python
 try:
-    response = bridge.send_message(request)
+    response = bridge.send_message(request)  # Returns anthropic.types.Message object
+    print(f"Response: {response.content[0].text}")
 except Exception as e:
     print(f"API Error: {e}")
 ```

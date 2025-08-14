@@ -36,8 +36,8 @@ def main():
     
     try:
         response = bridge.send_message(simple_request)
-        print(f"Response: {response['content'][0]['text']}")
-        print(f"Usage: {response['usage']['input_tokens']} input, {response['usage']['output_tokens']} output tokens")
+        print(f"Response: {response.content[0].text}")
+        print(f"Usage: {response.usage.input_tokens} input, {response.usage.output_tokens} output tokens")
     except Exception as e:
         print(f"Error in simple conversation: {e}")
     
@@ -57,8 +57,8 @@ def main():
     
     try:
         response = bridge.send_message(system_request)
-        print(f"Response: {response['content'][0]['text']}")
-        print(f"Stop reason: {response['stop_reason']}")
+        print(f"Response: {response.content[0].text}")
+        print(f"Stop reason: {response.stop_reason}")
     except Exception as e:
         print(f"Error in system message example: {e}")
     
@@ -85,7 +85,7 @@ def main():
     
     try:
         response = bridge.send_message(multi_turn_request)
-        print(f"Response: {response['content'][0]['text']}")
+        print(f"Response: {response.content[0].text}")
     except Exception as e:
         print(f"Error in multi-turn example: {e}")
     

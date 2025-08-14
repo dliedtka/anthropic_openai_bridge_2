@@ -20,8 +20,8 @@ The bridge is implemented with a clean separation of concerns:
 1. Takes Anthropic Messages API request dictionaries  
 2. `RequestConverter` transforms to OpenAI ChatCompletions format
 3. `OpenAIClientWrapper` submits to OpenAI-compatible service
-4. `ResponseConverter` transforms OpenAI response back to Anthropic format
-5. Returns Anthropic Messages API response dictionary
+4. `ResponseConverter` transforms OpenAI response back to Anthropic Message objects
+5. Returns `anthropic.types.Message` object (not dictionary)
 
 ## Key Implementation Details
 
@@ -38,7 +38,27 @@ Model names are passed through unchanged - no mapping or conversion occurs. This
 - **Authentication**: Manages different header formats (`x-api-key` vs `Authorization: Bearer`)
 - **System Messages**: Anthropic's top-level `system` parameter converts to OpenAI's system message in messages array
 - **Parameter Names**: Handles `max_tokens` vs `max_completion_tokens` difference
-- **Response Structure**: Converts between different response object schemas
+- **Response Structure**: Converts OpenAI response dictionaries to proper `anthropic.types.Message` objects
+- **Type Safety**: Returns structured Anthropic SDK objects with full type hints
+
+## Return Types and Object Structure
+
+**Important**: The bridge returns proper Anthropic SDK objects, not dictionaries.
+
+```python
+response = bridge.send_message(request)
+print(type(response))  # <class 'anthropic.types.message.Message'>
+
+# Access properties using object notation (not dictionary keys):
+print(response.content[0].text)    # ✅ Correct
+print(response.usage.input_tokens) # ✅ Correct
+print(response["content"][0]["text"])  # ❌ Wrong - this is a dict approach
+```
+
+**Object Structure**:
+- `response`: `anthropic.types.Message`
+- `response.content[0]`: `anthropic.types.TextBlock`
+- `response.usage`: `anthropic.types.Usage`
 
 ## Environment Configuration
 
@@ -95,19 +115,19 @@ python -m pytest tests/unit/test_bridge.py -v
 # Quick test run
 python -m pytest tests/ -q
 
-# Run tests with coverage
+# Run tests with coverage (requires: pip install pytest-cov)
 python -m pytest tests/ --cov=src/anthropic_openai_bridge --cov-report=html
 ```
 
 **Code Quality**:
 ```bash
-# Format code
+# Format code (line length 88, Python 3.8+ target)
 black src/ tests/
 
-# Sort imports
+# Sort imports (black-compatible profile)
 isort src/ tests/
 
-# Type checking
+# Type checking (strict mode: disallow_untyped_defs=true)
 mypy src/
 
 # Run all code quality checks
@@ -116,7 +136,7 @@ black src/ tests/ && isort src/ tests/ && mypy src/
 
 **Build & Distribution**:
 ```bash
-# Build package
+# Build package (requires build: pip install build)
 python -m build
 
 # Install locally in editable mode
@@ -137,12 +157,13 @@ python example_usage.py
 **Phase 1 - Complete**: Basic conversation support implemented and tested
 - ✅ Anthropic Messages request → OpenAI ChatCompletions request conversion
 - ✅ OpenAI-compatible service communication 
-- ✅ OpenAI ChatCompletions response → Anthropic Messages response conversion
+- ✅ OpenAI ChatCompletions response → Anthropic Messages object conversion
+- ✅ Returns proper `anthropic.types.Message` objects (not dictionaries)
 - ✅ System message handling
 - ✅ Multi-turn conversations
 - ✅ Model name passthrough
 - ✅ Parameter mapping and validation
-- ✅ Comprehensive test suite
+- ✅ Comprehensive test suite with type safety
 
 **Phase 2 - Planned**: Tool calling support
 - 🔄 Map Anthropic tool calling format to OpenAI function calling format
